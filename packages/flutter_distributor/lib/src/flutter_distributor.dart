@@ -160,7 +160,9 @@ class FlutterDistributor {
               environment: variables ?? globalVariables,
             );
             print(
-              const JsonEncoder.withIndent('  ').convert(buildResult.toJson()),
+              const JsonEncoder.withIndent(
+                '  ',
+              ).convert(redactSensitiveData(buildResult.toJson())),
             );
             logger.info(
               'Successfully built ${buildResult.outputDirectory} in ${buildResult.duration!.inSeconds}s'

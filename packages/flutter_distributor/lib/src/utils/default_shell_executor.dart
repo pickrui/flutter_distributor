@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:charset/charset.dart';
 import 'package:flutter_distributor/src/extensions/string.dart';
 import 'package:flutter_distributor/src/utils/logger.dart';
+import 'package:flutter_distributor/src/utils/redaction.dart';
 import 'package:shell_executor/shell_executor.dart';
 
 /// Convert bytes to string (UTF-8 or detected charset)
@@ -33,18 +34,21 @@ class DefaultShellExecutor extends ShellExecutor {
       runInShell: true,
     );
 
-    logger.info('\$ $executable ${arguments.join(' ')}'.brightBlack());
+    final command = redactSensitiveText(
+      '\$ $executable ${arguments.join(' ')}',
+    );
+    logger.info(command.brightBlack());
 
     String? stdoutStr;
     String? stderrStr;
 
     process.stdout.listen((data) {
-      String msg = convertToString(data);
+      String msg = redactSensitiveOutput(convertToString(data));
       stdoutStr = '${stdoutStr ?? ''}$msg';
       stdout.write(msg.brightBlack());
     });
     process.stderr.listen((data) {
-      String msg = convertToString(data);
+      String msg = redactSensitiveOutput(convertToString(data));
       stderrStr = '${stderrStr ?? ''}$msg';
       stderr.write(msg.brightRed());
     });
