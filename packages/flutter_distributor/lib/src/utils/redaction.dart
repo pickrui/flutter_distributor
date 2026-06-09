@@ -7,6 +7,7 @@ const _sensitiveBuildKeys = {
   'FLCLASH_APP_SECRET',
   'HOST_OVERRIDES',
   'FLCLASH_KEY',
+  'DNS_AUTH_SECRET',
 };
 
 String redactSensitiveText(String value) {
