@@ -5,7 +5,6 @@ const _sensitiveBuildKeys = {
   'API_DOMAIN',
   'SPARE_API_DOMAIN',
   'FLCLASH_APP_SECRET',
-  'HOST_OVERRIDES',
   'FLCLASH_KEY',
   'DNS_AUTH_SECRET',
 };
