@@ -6,7 +6,6 @@ const _sensitiveBuildKeys = {
   'SPARE_API_DOMAIN',
   'FLCLASH_APP_SECRET',
   'FLCLASH_KEY',
-  'DNS_AUTH_SECRET',
 };
 
 String redactSensitiveText(String value) {
