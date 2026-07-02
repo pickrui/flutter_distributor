@@ -153,12 +153,14 @@ class CommandPackage extends Command {
       dynamic value = argResults?[option];
 
       if (value is List) {
-        // ignore: prefer_for_elements_to_map_fromiterable
-        value = Map.fromIterable(
-          value,
-          key: (e) => e.split('=')[0],
-          value: (e) => e.split('=')[1],
-        );
+        // Split on the first '=' only: values (e.g. base64 with trailing
+        // padding) may themselves contain '='.
+        value = <String, String>{
+          for (final String pair in value.cast<String>())
+            pair.split('=').first: pair.contains('=')
+                ? pair.substring(pair.indexOf('=') + 1)
+                : '',
+        };
       }
 
       buildArguments.putIfAbsent(
