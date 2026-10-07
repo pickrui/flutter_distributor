@@ -187,6 +187,7 @@ class FlutterDistributor {
             'description': description,
             if (Platform.isWindows)
               'arch': (buildResult as BuildWindowsResult).arch,
+            if (buildResult is BuildLinuxResult) 'arch': buildResult.arch,
           };
           MakeResult makeResult = await _packager.package(
             platform,

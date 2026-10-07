@@ -111,6 +111,9 @@ class MakeRPMConfig extends MakeConfig {
   String? attr;
   String? changelog;
 
+  String get resolvedBuildArch =>
+      buildArch ?? (arch == 'arm64' ? 'aarch64' : 'x86_64');
+
   @override
   Map<String, dynamic> toJson() {
     return {
@@ -130,7 +133,7 @@ class MakeRPMConfig extends MakeConfig {
           'URL': url,
           'Requires': requires?.join(', '),
           'BuildRequires': buildRequires?.join(', '),
-          'BuildArch': buildArch ?? 'x86_64',
+          'BuildArch': resolvedBuildArch,
         }..removeWhere((key, value) => value == null),
         'body': {
           '%description': description ?? pubspec.description,
