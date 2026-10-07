@@ -25,6 +25,9 @@ class MakeRPMConfig extends MakeConfig {
     this.buildArch,
     this.requires,
     this.buildRequires,
+    this.specMacros,
+    this.postInstallScripts,
+    this.postUninstallScripts,
     this.description,
     this.prep,
     this.build,
@@ -43,8 +46,8 @@ class MakeRPMConfig extends MakeConfig {
       genericName: json['generic_name'] as String?,
       startupNotify: json['startup_notify'] as bool?,
       keywords: (json['keywords'] as List<dynamic>?)?.cast<String>(),
-      supportedMimeType:
-          (json['supported_mime_type'] as List<dynamic>?)?.cast<String>(),
+      supportedMimeType: (json['supported_mime_type'] as List<dynamic>?)
+          ?.cast<String>(),
       actions: (json['actions'] as List<dynamic>?)?.cast<String>(),
       categories: (json['categories'] as List<dynamic>?)?.cast<String>(),
       summary: json['summary'] as String?,
@@ -57,6 +60,11 @@ class MakeRPMConfig extends MakeConfig {
       buildArch: json['build_arch'] as String?,
       requires: (json['requires'] as List<dynamic>?)?.cast<String>(),
       buildRequires: (json['build_requires'] as List<dynamic>?)?.cast<String>(),
+      specMacros: (json['spec_macros'] as List<dynamic>?)?.cast<String>(),
+      postInstallScripts: (json['postinstall_scripts'] as List<dynamic>?)
+          ?.cast<String>(),
+      postUninstallScripts: (json['postuninstall_scripts'] as List<dynamic>?)
+          ?.cast<String>(),
       description: json['description'] as String?,
       prep: json['prep'] as String?,
       build: json['build'] as String?,
@@ -89,6 +97,9 @@ class MakeRPMConfig extends MakeConfig {
   String? buildArch;
   List<String>? requires;
   List<String>? buildRequires;
+  List<String>? specMacros;
+  List<String>? postInstallScripts;
+  List<String>? postUninstallScripts;
   //RPM postamble Spec file fields
   String? description;
   String? prep;
@@ -112,8 +123,9 @@ class MakeRPMConfig extends MakeConfig {
           'Summary': summary ?? pubspec.description,
           'Group': group,
           'Vendor': vendor,
-          'Packager':
-              packagerEmail != null ? '$packager <$packagerEmail>' : packager,
+          'Packager': packagerEmail != null
+              ? '$packager <$packagerEmail>'
+              : packager,
           'License': license,
           'URL': url,
           'Requires': requires?.join(', '),
@@ -133,8 +145,12 @@ class MakeRPMConfig extends MakeConfig {
             'cp -r %{name}.png %{buildroot}%{_datadir}/pixmaps',
             'update-mime-database %{_datadir}/mime &> /dev/null || :',
           ].join('\n'),
-          '%postun': ['update-mime-database %{_datadir}/mime &> /dev/null || :']
-              .join('\n'),
+          if (postInstallScripts?.isNotEmpty == true)
+            '%post': postInstallScripts!.join('\n'),
+          '%postun': [
+            'update-mime-database %{_datadir}/mime &> /dev/null || :',
+            ...?postUninstallScripts,
+          ].join('\n'),
           '%files': [
             '%{_bindir}/%{name}',
             '%{_datadir}/%{name}',
@@ -173,30 +189,29 @@ class MakeRPMConfig extends MakeConfig {
   Map<String, String> toFilesString() {
     final json = toJson();
 
-    final preamble = (json['SPEC']['preamble'] as Map)
-        .entries
+    final preamble = (json['SPEC']['preamble'] as Map).entries
         .map((e) => '${e.key}: ${e.value}')
         .join('\n');
-    final body = (json['SPEC']['body'] as Map).entries.map(
-      (e) {
-        return '${e.key}\n${e.value}\n';
-      },
-    ).join('\n');
-    final inlineBody = (json['SPEC']['inline-body'] as Map).entries.map(
-      (e) {
-        return '${e.key}${e.value}\n';
-      },
-    ).join('\n');
+    final body = (json['SPEC']['body'] as Map).entries
+        .map((e) {
+          return '${e.key}\n${e.value}\n';
+        })
+        .join('\n');
+    final inlineBody = (json['SPEC']['inline-body'] as Map).entries
+        .map((e) {
+          return '${e.key}${e.value}\n';
+        })
+        .join('\n');
 
     final desktopFile = [
       '[Desktop Entry]',
       ...(json['DESKTOP'] as Map<String, dynamic>).entries.map(
-            (e) => '${e.key}=${e.value}',
-          ),
+        (e) => '${e.key}=${e.value}',
+      ),
     ].join('\n');
     final map = {
       'DESKTOP': desktopFile,
-      'SPEC': '$preamble\n\n$body\n\n$inlineBody',
+      'SPEC': [...?specMacros, '$preamble\n\n$body\n\n$inlineBody'].join('\n'),
     };
     return Map.castFrom<String, String?, String, String>(map);
   }
