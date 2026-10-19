@@ -8,24 +8,39 @@ import 'dart:io';
 import 'package:flutter_app_packager/src/makers/appimage/make_appimage_config.dart';
 
 Future<void> main() async {
-  final config = MakeAppImageConfig.fromJson({
-    'display_name': 'FlClash',
-    'icon': 'icon.png',
-    'supported_mime_type': [
-      'x-scheme-handler/clash',
-      'x-scheme-handler/flclash',
-    ],
-  });
   final fixture = Directory.systemTemp.createTempSync(
     'appimage entry fixture ',
   );
+  final previousDirectory = Directory.current;
   try {
+    Directory.current = fixture;
+    File('pubspec.yaml')
+        .writeAsStringSync('name: fixture_package\nversion: 1.0.0\n');
+    Directory('linux').createSync();
+    File('linux/CMakeLists.txt')
+        .writeAsStringSync('set(BINARY_NAME "fixture_binary")\n');
+    final config = MakeAppImageConfig.fromJson({
+      'display_name': 'FlClash',
+      'icon': 'icon.png',
+      'startup_wm_class': 'com.oixcloud.clash',
+      'supported_mime_type': [
+        'x-scheme-handler/clash',
+        'x-scheme-handler/flclash',
+      ],
+    });
+    if (!config.desktopFileContent.contains('Exec=fixture_binary %u')) {
+      throw StateError('The AppImage entry must use the CMake executable');
+    }
     final desktop = File('${fixture.path}/fixture.desktop')
       ..writeAsStringSync(config.desktopFileContent);
     if (!desktop.readAsStringSync().contains(
-      'MimeType=x-scheme-handler/clash;x-scheme-handler/flclash;',
-    )) {
+          'MimeType=x-scheme-handler/clash;x-scheme-handler/flclash;',
+        )) {
       throw StateError('The AppImage desktop entry lost its URL handlers');
+    }
+    if (!config.desktopFileContent
+        .contains('StartupWMClass=com.oixcloud.clash')) {
+      throw StateError('The AppImage desktop entry lost its window class');
     }
     final validation = await Process.run('desktop-file-validate', [
       desktop.path,
@@ -35,9 +50,9 @@ Future<void> main() async {
     }
     final launcher = File('${fixture.path}/AppRun')
       ..writeAsStringSync(config.appRunContent);
-    final executable = File('${fixture.path}/${config.appName}')
+    final executable = File('${fixture.path}/${config.appBinaryName}')
       ..writeAsStringSync(r'''#!/bin/sh
-printf '%s\0' "$@"
+printf '%s\0' "$PWD" "$LD_LIBRARY_PATH" "$@"
 ''');
     final chmod = await Process.run('chmod', ['755', executable.path]);
     if (chmod.exitCode != 0) throw StateError('Cannot prepare the fixture');
@@ -46,15 +61,31 @@ printf '%s\0' "$@"
       'quote" and apostrophe\' and dollar\$',
       '',
     ];
-    final result = await Process.run('bash', [launcher.path, ...arguments]);
-    if (result.exitCode != 0 ||
-        result.stdout != '${arguments.join('\x00')}\x00') {
-      throw StateError(
-        'AppRun lost or changed launch arguments: ${result.stdout}',
+    final caller = Directory('${fixture.path}/caller directory')..createSync();
+    final link = Link('${caller.path}/launcher')..createSync(launcher.path);
+    for (final inherited in ['', '/existing/library path:/another/path']) {
+      final result = await Process.run(
+        'sh',
+        [link.path, ...arguments],
+        workingDirectory: caller.path,
+        environment: {'LD_LIBRARY_PATH': inherited},
       );
+      final expected = [
+        caller.resolveSymbolicLinksSync(),
+        '${fixture.resolveSymbolicLinksSync()}/usr/lib:${fixture.resolveSymbolicLinksSync()}/lib'
+            '${inherited.isEmpty ? '' : ':$inherited'}',
+        ...arguments,
+      ];
+      if (result.exitCode != 0 ||
+          result.stdout != '${expected.join('\x00')}\x00') {
+        throw StateError(
+          'AppRun changed the launch context: ${result.stdout} ${result.stderr}',
+        );
+      }
     }
     print('AppImage desktop validation and URL argument forwarding passed');
   } finally {
+    Directory.current = previousDirectory;
     fixture.deleteSync(recursive: true);
   }
 }

@@ -26,7 +26,7 @@ class AppImageAction {
   }
 }
 
-class MakeAppImageConfig extends MakeConfig {
+class MakeAppImageConfig extends MakeLinuxPackageConfig {
   MakeAppImageConfig({
     required this.displayName,
     required this.icon,
@@ -46,8 +46,8 @@ class MakeAppImageConfig extends MakeConfig {
       include: (map['include'] as List<dynamic>? ?? []).cast<String>(),
       keywords: (map['keywords'] as List<dynamic>? ?? []).cast<String>(),
       categories: (map['categories'] as List<dynamic>? ?? []).cast<String>(),
-      supportedMimeType: (map['supported_mime_type'] as List<dynamic>? ?? [])
-          .cast<String>(),
+      supportedMimeType:
+          (map['supported_mime_type'] as List<dynamic>? ?? []).cast<String>(),
       startupNotify: map['startup_notify'] as bool? ?? false,
       startupWMClass: map['startup_wm_class'] as String?,
       genericName: map['generic_name'] as String? ?? 'A Flutter Application',
@@ -76,7 +76,7 @@ class MakeAppImageConfig extends MakeConfig {
     final fields = {
       'Name': displayName,
       'GenericName': genericName,
-      'Exec': '$appName %u',
+      'Exec': '$appBinaryName %u',
       'Icon': appName,
       'Type': 'Application',
       'StartupNotify': startupNotify ? 'true' : 'false',
@@ -89,26 +89,23 @@ class MakeAppImageConfig extends MakeConfig {
         'Actions': this.actions.map((e) => e.label).join(';'),
     }.entries.map((e) => '${e.key}=${e.value}').join('\n');
 
-    final actions = this.actions
-        .map((action) {
-          final fields = {
-            'Name': action.name,
-            'Exec': '$appName ${action.arguments.join(' ')} %u',
-          };
-          return '[Desktop Action ${action.label}]\n${fields.entries.map((e) => '${e.key}=${e.value}').join('\n')}';
-        })
-        .join('\n\n');
+    final actions = this.actions.map((action) {
+      final fields = {
+        'Name': action.name,
+        'Exec': '$appBinaryName ${action.arguments.join(' ')} %u',
+      };
+      return '[Desktop Action ${action.label}]\n${fields.entries.map((e) => '${e.key}=${e.value}').join('\n')}';
+    }).join('\n\n');
 
     return '[Desktop Entry]\n$fields\n\n$actions';
   }
 
   String get appRunContent {
     return '''
-#!/bin/bash
-
-cd "\$(dirname "\$0")"
-export LD_LIBRARY_PATH=usr/lib
-exec "./$appName" "\$@"
+#!/bin/sh
+HERE="\$(dirname "\$(readlink -f "\$0")")"
+export LD_LIBRARY_PATH="\$HERE/usr/lib:\$HERE/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+exec "\$HERE/$appBinaryName" "\$@"
 ''';
   }
 }
