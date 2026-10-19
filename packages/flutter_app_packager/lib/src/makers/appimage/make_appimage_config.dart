@@ -22,11 +22,7 @@ class AppImageAction {
   List<String> arguments;
 
   Map<String, dynamic> toJson() {
-    return {
-      'label': label,
-      'name': name,
-      'arguments': arguments,
-    };
+    return {'label': label, 'name': name, 'arguments': arguments};
   }
 }
 
@@ -36,6 +32,7 @@ class MakeAppImageConfig extends MakeConfig {
     required this.icon,
     this.keywords = const [],
     this.categories = const [],
+    this.supportedMimeType = const [],
     this.actions = const [],
     this.include = const [],
     this.startupNotify = true,
@@ -49,6 +46,8 @@ class MakeAppImageConfig extends MakeConfig {
       include: (map['include'] as List<dynamic>? ?? []).cast<String>(),
       keywords: (map['keywords'] as List<dynamic>? ?? []).cast<String>(),
       categories: (map['categories'] as List<dynamic>? ?? []).cast<String>(),
+      supportedMimeType: (map['supported_mime_type'] as List<dynamic>? ?? [])
+          .cast<String>(),
       startupNotify: map['startup_notify'] as bool? ?? false,
       startupWMClass: map['startup_wm_class'] as String?,
       genericName: map['generic_name'] as String? ?? 'A Flutter Application',
@@ -65,6 +64,7 @@ class MakeAppImageConfig extends MakeConfig {
   final String icon;
   final List<String> keywords;
   final List<String> categories;
+  final List<String> supportedMimeType;
   final List<AppImageAction> actions;
   final bool startupNotify;
   final String? startupWMClass;
@@ -76,25 +76,28 @@ class MakeAppImageConfig extends MakeConfig {
     final fields = {
       'Name': displayName,
       'GenericName': genericName,
-      'Exec': 'LD_LIBRARY_PATH=usr/lib $appName %u',
+      'Exec': '$appName %u',
       'Icon': appName,
       'Type': 'Application',
       'StartupNotify': startupNotify ? 'true' : 'false',
       if (startupWMClass != null) 'StartupWMClass': startupWMClass,
+      if (supportedMimeType.isNotEmpty)
+        'MimeType': '${supportedMimeType.join(';')};',
       if (categories.isNotEmpty) 'Categories': categories.join(';'),
       if (keywords.isNotEmpty) 'Keywords': keywords.join(';'),
       if (this.actions.isNotEmpty)
         'Actions': this.actions.map((e) => e.label).join(';'),
     }.entries.map((e) => '${e.key}=${e.value}').join('\n');
 
-    final actions = this.actions.map((action) {
-      final fields = {
-        'Name': action.name,
-        'Exec':
-            'LD_LIBRARY_PATH=usr/lib $appName ${action.arguments.join(' ')} %u',
-      };
-      return '[Desktop Action ${action.label}]\n${fields.entries.map((e) => '${e.key}=${e.value}').join('\n')}';
-    }).join('\n\n');
+    final actions = this.actions
+        .map((action) {
+          final fields = {
+            'Name': action.name,
+            'Exec': '$appName ${action.arguments.join(' ')} %u',
+          };
+          return '[Desktop Action ${action.label}]\n${fields.entries.map((e) => '${e.key}=${e.value}').join('\n')}';
+        })
+        .join('\n\n');
 
     return '[Desktop Entry]\n$fields\n\n$actions';
   }
@@ -105,7 +108,7 @@ class MakeAppImageConfig extends MakeConfig {
 
 cd "\$(dirname "\$0")"
 export LD_LIBRARY_PATH=usr/lib
-exec ./$appName
+exec "./$appName" "\$@"
 ''';
   }
 }

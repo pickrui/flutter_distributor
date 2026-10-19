@@ -165,12 +165,12 @@ class MakeRPMConfig extends MakeConfig {
         }..removeWhere((key, value) => value == null),
         'inline-body': {
           '%defattr': '(-,root,root)',
-          '%attr': '(4755, root, root) %{_datadir}/pixmaps/%{name}.png',
+          '%attr': '(0644, root, root) %{_datadir}/pixmaps/%{name}.png',
         },
       },
       'DESKTOP': {
         'Type': 'Application',
-        'Version': appVersion.toString(),
+        'Version': '1.0',
         'Name': displayName,
         'GenericName': genericName,
         'Icon': appName,
