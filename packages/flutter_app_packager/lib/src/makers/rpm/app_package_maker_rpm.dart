@@ -7,6 +7,17 @@ import 'package:flutter_app_packager/src/makers/rpm/rpmbuild.dart';
 import 'package:path/path.dart' as path;
 import 'package:shell_executor/shell_executor.dart';
 
+String sanitizeRpmRpath(String rpath) {
+  return rpath
+      .split(':')
+      .where((entry) => entry.isNotEmpty)
+      .map(
+        (entry) => path.posix.isAbsolute(entry) ? r'$ORIGIN' : entry,
+      )
+      .toSet()
+      .join(':');
+}
+
 class AppPackageMakerRPM extends AppPackageMaker {
   @override
   List<Command> get requirements => [rpmbuild];
@@ -101,7 +112,6 @@ class AppPackageMakerRPM extends AppPackageMaker {
     for (final file in libFiles) {
       if (file is! File) continue;
       if (!file.path.endsWith('.so')) continue;
-      // check if points to /home dir
       final processResult = await $(
         'patchelf',
         [
@@ -109,12 +119,14 @@ class AppPackageMakerRPM extends AppPackageMaker {
           file.path,
         ],
       );
-      if (processResult.stdout.toString().contains('/home')) {
+      final rpath = processResult.stdout.toString().trim();
+      final sanitizedRpath = sanitizeRpmRpath(rpath);
+      if (sanitizedRpath != rpath) {
         await $(
           'patchelf',
           [
             '--set-rpath',
-            '\$ORIGIN',
+            sanitizedRpath,
             file.path,
           ],
         );
