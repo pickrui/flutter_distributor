@@ -118,6 +118,7 @@ class AppPackageMakerDeb extends AppPackageMaker {
     ProcessResult processResult = await $('dpkg-deb', [
       '--build',
       '--root-owner-group',
+      '-Zxz',
       packagingDirectory.path,
       makeConfig.outputFile.path,
     ]);
