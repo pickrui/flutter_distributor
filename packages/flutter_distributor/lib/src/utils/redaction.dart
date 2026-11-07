@@ -1,5 +1,4 @@
 const _sensitiveBuildKeys = {
-  'PROFILE_KEY',
   'BASE_DOMAIN',
   'SPARE_DOMAIN',
   'API_DOMAIN',
